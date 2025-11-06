@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF PRO SPLITTER</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <style>
+    :root{
+      --prim:#4361ee;--prim-dark:#3a56d4;--gray:#f8f9fa;--text:#212529;
+      --success:#06d6a0;--danger:#ef476f;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Inter',sans-serif;background:linear-gradient(135deg,#f0f4ff,#e0eafc);
+      color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;
+      padding:2rem 1rem;
+    }
+    .card{
+      background:#fff;border-radius:1.5rem;box-shadow:0 20px 40px rgba(67,97,238,.15);
+      width:100%;max-width:560px;padding:2.5rem;
+    }
+    h1{
+      font-size:2.2rem;font-weight:700;color:var(--prim);text-align:center;margin-bottom:.5rem;
+    }
+    .subtitle{
+      text-align:center;color:#64748b;margin-bottom:2rem;font-weight:500;
+    }
+    .drop{
+      border:4px dashed var(--prim);border-radius:1rem;padding:3rem 1rem;
+      text-align:center;cursor:pointer;transition:.3s;background:#fff;
+    }
+    .drop.drag{background:var(--prim);color:#fff;border-color:#fff}
+    .drop.drag svg{fill:#fff}
+    .drop svg{width:48px;height:48px;margin-bottom:1rem;fill:var(--prim)}
+    .drop p{font-weight:600;font-size:1.1rem}
+    .info{
+      margin:1.5rem 0;padding:1rem;background:#f0f4ff;border-radius:.75rem;
+      font-size:.95rem;color:#4361ee;
+    }
+    .controls{
+      display:grid;gap:1rem;margin:1.5rem 0;
+    }
+    label{
+      font-weight:600;color:#374151;display:block;margin-bottom:.4rem;
+    }
+    input[type=text],select{
+      padding:.75rem 1rem;border:2px solid #e2e8f0;border-radius:.75rem;
+      font-size:1rem;width:100%;transition:.2s;
+    }
+    input:focus,select:focus{
+      outline:none;border-color:var(--prim);box-shadow:0 0 0 4px rgba(67,97,238,.15);
+    }
+    .range{
+      display:flex;gap:.5rem;align-items:center;
+    }
+    .range input{width:80px;text-align:center}
+    .range span{font-weight:600;color:#64748b}
+    .actions{
+      display:flex;gap:1rem;margin-top:1.5rem;
+    }
+    button{
+      flex:1;padding:.9rem 1.2rem;font-size:1rem;font-weight:600;
+      border:none;border-radius:.75rem;cursor:pointer;transition:.3s;
+    }
+    .btn-prim{
+      background:var(--prim);color:#fff;
+    }
+    .btn-sec{
+      background:#e2e8f0;color:#374151;
+    }
+    .btn-prim:disabled{background:#94a3b8;cursor:not-allowed}
+    .progress{
+      margin:1.5rem 0;height:12px;background:#e2e8f0;border-radius:6px;overflow:hidden;display:none;
+    }
+    .bar{
+      height:100%;width:0;background:var(--success);transition:width .4s;
+    }
+    .log{
+      margin-top:1rem;padding:1rem;background:#f8f9fa;border-radius:.75rem;
+      font-family:monospace;font-size:.9rem;max-height:180px;overflow:auto;
+      border:1px solid #e2e8f0;
+    }
+    .footer{
+      margin-top:2rem;text-align:center;color:#94a3b8;font-size:.85rem;
+    }
+    @media(max-width:480px){
+      .card{padding:1.5rem}
+      h1{font-size:1.8rem}
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>PDF CUT GFander</h1>
+  <p class="subtitle">Separe, extraia ou junte páginas em segundos – 100% no navegador</p>
+
+  <div id="drop" class="drop">
+    <svg viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg>
+    <p>Arraste o PDF aqui ou clique para escolher</p>
+  </div>
+  <input type="file" id="file" accept=".pdf" hidden>
+
+  <div id="info" class="info" style="display:none">
+    <strong id="nome"></strong><br>
+    <span id="tamanho"></span> • <span id="paginas"></span> páginas
+  </div>
+
+  <div class="controls">
+    <label>Modo de Extração</label>
+    <select id="modo">
+      <option value="todas">Todas as páginas</option>
+      <option value="unica">Apenas uma página</option>
+      <option value="intervalo">Intervalo de páginas</option>
+      <option value="lista">Páginas específicas (ex: 1,3,5-7)</option>
+    </select>
+
+    <div id="opUnica" class="range" style="display:none">
+      <label>Página</label>
+      <input type="text" id="paginaUnica" placeholder="5">
+      <span>de <span id="totalUnica">0</span></span>
+    </div>
+
+    <div id="opIntervalo" class="range" style="display:none">
+      <label>De</label>
+      <input type="text" id="de" placeholder="1">
+      <span>até</span>
+      <input type="text" id="ate" placeholder="10">
+    </div>
+
+    <div id="opLista" style="display:none">
+      <label>Lista (vírgula ou hífen)</label>
+      <input type="text" id="lista" placeholder="1, 3, 5-8, 12">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="processar" class="btn-prim" disabled>Gerar PDFs</button>
+    <button id="limpar" class="btn-sec">Limpar</button>
+  </div>
+
+  <div id="progress" class="progress"><div id="bar" class="bar"></div></div>
+  <div id="log" class="log"></div>
+</div>
+
+<div class="footer">
+  SPLITTER Grupo Fander  © 2025 – By Manuel Nganga Ferreira
+</div>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const drop = $('#drop'), fileInput = $('#file'), info = $('#info');
+  const modo = $('#modo'), opUnica = $('#opUnica'), opIntervalo = $('#opIntervalo'), opLista = $('#opLista');
+  const processar = $('#processar'), limpar = $('#limpar');
+  const progress = $('#progress'), bar = $('#bar'), log = $('#log');
+
+  let pdfDoc = null, totalPages = 0, fileName = '';
+
+  // ---------- UI ----------
+  drop.onclick = () => fileInput.click();
+  fileInput.onchange = e => e.target.files[0] && load(e.target.files[0]);
+
+  drop.ondragover = drop.ondragenter = e => {e.preventDefault(); drop.classList.add('drag');};
+  drop.ondragleave = drop.ondrop = e => {e.preventDefault(); drop.classList.remove('drag');};
+  drop.ondrop = e => load(e.dataTransfer.files[0]);
+
+  modo.onchange = () => {
+    opUnica.style.display = opIntervalo.style.display = opLista.style.display = 'none';
+    if(modo.value==='unica') opUnica.style.display='flex';
+    if(modo.value==='intervalo') opIntervalo.style.display='flex';
+    if(modo.value==='lista') opLista.style.display='block';
+  };
+
+  limpar.onclick = () => {
+    fileInput.value=''; info.style.display='none'; processar.disabled=true;
+    log.textContent=''; progress.style.display='none';
+    pdfDoc=null; totalPages=0;
+  };
+
+  // ---------- CARREGA PDF ----------
+  async function load(file){
+    if(!file.name.toLowerCase().endsWith('.pdf')){
+      return log.textContent='Apenas arquivos PDF!';
+    }
+    fileName = file.name.replace(/\.pdf$/i,'');
+    $('#nome').textContent = file.name;
+    $('#tamanho').textContent = (file.size/1024/1024).toFixed(1)+' MB';
+
+    log.textContent='Lendo PDF...';
+    progress.style.display='block'; bar.style.width='10%';
+
+    const arrayBuffer = await file.arrayBuffer();
+    pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+    totalPages = pdfDoc.getPageCount();
+
+    $('#paginas').textContent = totalPages;
+    $('#totalUnica').textContent = totalPages;
+    info.style.display='block';
+    processar.disabled=false;
+    modo.onchange(); // atualiza campos
+    log.textContent=`PDF carregado: ${totalPages} página(s)\nPronto para extrair!`;
+    bar.style.width='30%';
+  }
+
+  // ---------- GERA PDFs ----------
+  processar.onclick = async () => {
+    if(!pdfDoc) return;
+    log.textContent='Processando...';
+    progress.style.display='block'; bar.style.width='35%';
+
+    const zip = new JSZip();
+    let indices = [];
+
+    // --- calcula índices ---
+    if(modo.value==='todas'){
+      for(let i=0;i<totalPages;i++) indices.push(i);
+    }
+    else if(modo.value==='unica'){
+      const p = parseInt($('#paginaUnica').value)-1;
+      if(p>=0 && p<totalPages) indices=[p];
+    }
+    else if(modo.value==='intervalo'){
+      const de = parseInt($('#de').value)-1;
+      const ate = parseInt($('#ate').value)-1;
+      if(de>=0 && ate<totalPages && de<=ate){
+        for(let i=de;i<=ate;i++) indices.push(i);
+      }
+    }
+    else if(modo.value==='lista'){
+      const txt = $('#lista').value.trim();
+      indices = parsePageList(txt, totalPages);
+    }
+
+    if(indices.length===0){
+      log.textContent+='\nNenhuma página válida. Verifique os números.';
+      return;
+    }
+
+    // --- copia páginas ---
+    let done=0;
+    for(const idx of indices){
+      const novo = await PDFLib.PDFDocument.create();
+      const [copia] = await novo.copyPages(pdfDoc, [idx]);
+      novo.addPage(copia);
+      const bytes = await novo.save();
+      zip.file(`Página_${idx+1}.pdf`, bytes);
+
+      done++;
+      bar.style.width = `${35 + (done/indices.length)*60}%`;
+      log.textContent = `Processando... ${done}/${indices.length}`;
+    }
+
+    // --- zip & download ---
+    bar.style.width='98%';
+    log.textContent='Compactando ZIP...';
+    const blob = await zip.generateAsync({type:'blob'});
+    const suffix = indices.length===1 ? '_PÁGINA' : '_PÁGINAS';
+    saveAs(blob, `${fileName}${suffix}.zip`);
+
+    bar.style.width='100%';
+    log.textContent += `\nPRONTO! ${indices.length} PDF(s) → ZIP baixado`;
+    setTimeout(()=>{progress.style.display='none';},3000);
+  };
+
+  // ---------- FUNÇÃO DE LISTA ----------
+  function parsePageList(txt, total){
+    const res=[];
+    txt.split(',').forEach(part=>{
+      part=part.trim();
+      if(!part) return;
+      if(part.includes('-')){
+        const [a,b]=part.split('-').map(x=>parseInt(x));
+        if(!isNaN(a)&&!isNaN(b)) for(let i=a;i<=b;i++) if(i>0&&i<=total) res.push(i-1);
+      }else{
+        const n=parseInt(part);
+        if(!isNaN(n)&&n>0&&n<=total) res.push(n-1);
+      }
+    });
+    return res;
+  }
+
+  // ---------- PROGRESSO ----------
+  function setProgress(pct){
+    bar.style.width = pct+'%';
+  }
+</script>
+</body>
+</html>
