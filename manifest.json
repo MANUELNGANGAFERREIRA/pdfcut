@@ -1,0 +1,13 @@
+{
+  "name": "PDF CUT GFander",
+  "short_name": "PDF CUT",
+  "description": "Divide PDF offline",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f0f4ff",
+  "theme_color": "#4361ee",
+  "icons": [
+    { "src": "fander.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "fander.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
